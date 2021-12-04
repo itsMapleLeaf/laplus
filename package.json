@@ -2,7 +2,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "nodemon --exec \"pnpm start\" --watch src --inspect=5858",
+    "dev": "nodemon --exec \"pnpm start\" --watch src --ext ts --inspect=5858",
     "start": "esmo --enable-source-maps --no-warnings src/main.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint --ext js,ts,tsx .",
