@@ -1,0 +1,65 @@
+{
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "nodemon --exec \"pnpm start\" --watch src --inspect=5858",
+    "start": "esmo --enable-source-maps --no-warnings src/main.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint --ext js,ts,tsx .",
+    "lint-fix": "npm run lint -- --fix",
+    "format": "prettier --write .",
+    "depcheck": "depcheck"
+  },
+  "dependencies": {
+    "@discordjs/voice": "^0.7.5",
+    "@itsmapleleaf/gatekeeper": "^0.9.0",
+    "chalk": "^4",
+    "discord.js": "^13.3.1",
+    "dotenv": "^10.0.0",
+    "mobx": "^6.3.8",
+    "pretty-ms": "^7.0.1",
+    "ws": "^8.3.0",
+    "youtubei": "^0.0.1-rc.27",
+    "esno": "^0.12.1",
+    "@itsmapleleaf/configs": "^1.0.4",
+    "node-fetch": "^3.1.0",
+    "@lavaclient/types": "^2.0.11"
+  },
+  "devDependencies": {
+    "@types/node": "^16.11.11",
+    "@typescript-eslint/eslint-plugin": "^5.5.0",
+    "@typescript-eslint/parser": "^5.5.0",
+    "depcheck": "^1.4.2",
+    "eslint": "^8.3.0",
+    "eslint-config-prettier": "^8.3.0",
+    "eslint-import-resolver-typescript": "^2.5.0",
+    "eslint-plugin-import": "^2.25.3",
+    "eslint-plugin-jsx-a11y": "^6.5.1",
+    "eslint-plugin-react": "^7.27.1",
+    "eslint-plugin-react-hooks": "^4.3.0",
+    "nodemon": "^2.0.15",
+    "prettier": "^2.5.0",
+    "type-fest": "^2.6.0",
+    "typescript": "^4.5.2"
+  },
+  "engines": {
+    "node": "^16 || ^17"
+  },
+  "prettier": "@itsmapleleaf/configs/prettier",
+  "eslintConfig": {
+    "extends": [
+      "./node_modules/@itsmapleleaf/configs/eslint"
+    ],
+    "rules": {
+      "import/no-unused-modules": [
+        "warn",
+        {
+          "unusedExports": true,
+          "ignoreExports": [
+            "src/commands/**/*"
+          ]
+        }
+      ]
+    }
+  }
+}
