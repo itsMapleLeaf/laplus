@@ -1,0 +1,13 @@
+# fly.toml file generated for laplus on 2021-12-03T23:56:30-06:00
+
+app = "laplus"
+
+kill_signal = "SIGINT"
+kill_timeout = 5
+processes = []
+
+[env]
+
+[experimental]
+allowed_public_ports = []
+auto_rollback = true
