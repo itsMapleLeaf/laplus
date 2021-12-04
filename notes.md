@@ -1,10 +1,11 @@
 ## commands
 
-- /mix (url)
+- /mix (url/search)
   - [x] queue input url
   - [x] queue related
   - [x] skip songs over a certain length
   - [x] if there's already a mix, add a confirmation message to replace it
+  - [ ] show a dropdown if there are multiple results
 - [x] /now-playing
 - [x] /skip (count=1)
 - [x] /clear
