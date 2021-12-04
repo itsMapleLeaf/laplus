@@ -51,7 +51,7 @@
 - queue (next 5)
   - [x] **[title](url)** [duration]
   - [x] (additional song count) ∙ (total queue duration)
-- [ ] arrows to navigate pages
+- [x] arrows to navigate pages
 - [ ] close button
 
 ## bugs
