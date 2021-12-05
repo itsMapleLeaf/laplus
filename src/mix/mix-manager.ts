@@ -5,6 +5,7 @@ import { join } from "node:path"
 import { z } from "zod"
 import { safeJsonParse } from "../helpers/json.js"
 import type { LavalinkSocket } from "../lavalink/lavalink-socket.js"
+import type { TextChannelPresence } from "../text-channel-presence.js"
 import { Mix, serializedMixSchema } from "./mix.js"
 
 const serializedMixesSchema = z.record(serializedMixSchema)
@@ -16,9 +17,14 @@ const dataFilePath = join(dataFolderPath, "mixes.json")
 export class MixManager {
   mixes = new Map<string, Mix>()
 
-  constructor(readonly socket: LavalinkSocket) {
+  constructor(
+    readonly socket: LavalinkSocket,
+    readonly textChannelPresence: TextChannelPresence,
+  ) {
     makeAutoObservable(this, {
       getMix: false,
+      socket: false,
+      textChannelPresence: false,
     })
   }
 
@@ -27,7 +33,7 @@ export class MixManager {
   }
 
   createMix(guild: Guild) {
-    const mix = new Mix(guild, this.socket)
+    const mix = new Mix(guild, this.socket, this.textChannelPresence)
     this.mixes.set(guild.id, mix)
     return mix
   }

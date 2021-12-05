@@ -7,7 +7,8 @@ import { addPlayerControlCommands } from "./commands/player-control.js"
 import { addStatsCommand } from "./commands/stats.js"
 import { raise } from "./helpers/errors.js"
 import { RootStore } from "./root-store.js"
-import { textChannelPresence } from "./singletons.js"
+
+const root = new RootStore()
 
 const client = new Client({
   intents: [
@@ -19,11 +20,9 @@ const client = new Client({
 
 client.on("interactionCreate", (interaction) => {
   if (interaction.channel) {
-    textChannelPresence.setTextChannel(interaction.channel)
+    root.textChannelPresence.setChannel(interaction.channel)
   }
 })
-
-const root = new RootStore()
 
 const gatekeeper = await Gatekeeper.create({
   name: "laplus",

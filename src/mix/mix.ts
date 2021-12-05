@@ -9,6 +9,7 @@ import { makeAutoObservable, runInAction } from "mobx"
 import { z } from "zod"
 import { loadLavalinkTrack } from "../lavalink/lavalink-http.js"
 import type { LavalinkSocket } from "../lavalink/lavalink-socket.js"
+import type { TextChannelPresence } from "../text-channel-presence.js"
 import type { RelatedResult, YoutubeVideo } from "../youtube.js"
 import { findRelated, isLiveVideo, isPlaylist } from "../youtube.js"
 import type { MixSong } from "./mix-song.js"
@@ -41,10 +42,15 @@ export class Mix {
   voiceEndpoint?: string
   voiceToken?: string
 
-  constructor(readonly guild: Guild, readonly socket: LavalinkSocket) {
+  constructor(
+    readonly guild: Guild,
+    readonly socket: LavalinkSocket,
+    readonly textChannelPresence: TextChannelPresence,
+  ) {
     makeAutoObservable(this, {
       guild: false,
       socket: false,
+      textChannelPresence: false,
     })
 
     socket.onOpen.listen(this.handleSocketOpen)
@@ -58,7 +64,7 @@ export class Mix {
   handleSocketOpen = () => {
     if (this.voiceChannelId) {
       this.joinVoiceChannel(this.voiceChannelId)
-      this.playWithCurrentState().catch(console.error)
+      this.playWithCurrentState().catch(this.textChannelPresence.reportError)
     }
   }
 
@@ -70,17 +76,17 @@ export class Mix {
 
   handlePlayerEvent = (event: PlayerEvent) => {
     if (event.type === "TrackEndEvent" && event.reason === "FINISHED") {
-      this.playNext().catch(console.error)
+      this.playNext().catch(this.textChannelPresence.reportError)
     }
 
     if (event.type === "TrackStuckEvent") {
-      console.error("track stuck", event.track)
-      this.playWithCurrentState().catch(console.error)
+      console.warn("Track stuck", { event, song: this.currentSong })
+      this.playWithCurrentState().catch(this.textChannelPresence.reportError)
     }
 
     if (event.type === "TrackExceptionEvent") {
-      console.error("track exception", event.error)
-      this.playWithCurrentState().catch(console.error)
+      console.warn(`Track exception: ${event.error}`)
+      this.playWithCurrentState().catch(this.textChannelPresence.reportError)
     }
   }
 
@@ -221,7 +227,7 @@ export class Mix {
 
     const track = await loadLavalinkTrack(song.youtubeId)
     if (!track) {
-      console.error(
+      this.textChannelPresence.reportError(
         `Failed to load track for ${song.title} by id ${song.youtubeId}`,
       )
       return this.playNext()
