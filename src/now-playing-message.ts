@@ -29,6 +29,7 @@ export function showNowPlaying(context: InteractionContext, mix: Mix) {
       progressSeconds,
       upcomingSongs: queue,
       queuePosition,
+      paused,
     } = mix
 
     if (!currentSong) {
@@ -61,7 +62,12 @@ export function showNowPlaying(context: InteractionContext, mix: Mix) {
 
     return [
       embedComponent(
-        currentSongEmbed(currentSong, progressNormalized, queuePosition),
+        currentSongEmbed(
+          currentSong,
+          progressNormalized,
+          queuePosition,
+          paused,
+        ),
       ),
       embedComponent(
         queueEmbed(
@@ -102,6 +108,7 @@ function currentSongEmbed(
   song: MixSong,
   progress: number,
   queuePosition: number,
+  paused: boolean,
 ): MessageEmbedOptions {
   const progressWidth = 16
   const progressFilledCount = Math.round(progress * progressWidth)
@@ -127,7 +134,7 @@ function currentSongEmbed(
     title: song.title,
     url: `https://youtu.be/${song.youtubeId}`,
     description: [
-      `${progressDisplay} / ${durationDisplay}`,
+      `${progressDisplay} / ${durationDisplay}${paused ? " (paused)" : ""}`,
       "",
       progressBar,
     ].join("\n"),
