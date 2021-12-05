@@ -24,7 +24,12 @@ export function showNowPlaying(context: InteractionContext, mix: Mix) {
   })
 
   reply = observerReply(context, () => {
-    const { currentSong, progressSeconds, upcomingSongs: queue } = mix
+    const {
+      currentSong,
+      progressSeconds,
+      upcomingSongs: queue,
+      queuePosition,
+    } = mix
 
     if (!currentSong) {
       return "Nothing's playing at the moment."
@@ -55,7 +60,9 @@ export function showNowPlaying(context: InteractionContext, mix: Mix) {
     )
 
     return [
-      embedComponent(currentSongEmbed(currentSong, progressNormalized)),
+      embedComponent(
+        currentSongEmbed(currentSong, progressNormalized, queuePosition),
+      ),
       embedComponent(
         queueEmbed(
           queue,
@@ -94,6 +101,7 @@ export function showNowPlaying(context: InteractionContext, mix: Mix) {
 function currentSongEmbed(
   song: MixSong,
   progress: number,
+  queuePosition: number,
 ): MessageEmbedOptions {
   const progressWidth = 16
   const progressFilledCount = Math.round(progress * progressWidth)
@@ -130,6 +138,9 @@ function currentSongEmbed(
     },
     thumbnail: {
       url: song.thumbnailUrl,
+    },
+    footer: {
+      text: `#${queuePosition + 1} in queue`,
     },
   }
 }
