@@ -1,3 +1,4 @@
+import type { PlayerEvent, PlayerUpdate } from "@lavaclient/types"
 import type {
   GatewayVoiceServerUpdateDispatchData,
   GatewayVoiceStateUpdate,
@@ -6,6 +7,7 @@ import type {
 import type { Guild } from "discord.js"
 import { makeAutoObservable, runInAction } from "mobx"
 import type { LavalinkSocket } from "../lavalink.new/lavalink-socket.js"
+import { loadLavalinkTrack } from "../lavalink/lavalink-http.js"
 import type { MixSong } from "../mix/mix-song.js"
 import type { RelatedResult, YoutubeVideo } from "../youtube.js"
 import { findRelated, isLiveVideo, isPlaylist } from "../youtube.js"
@@ -15,7 +17,7 @@ const maxDurationSeconds = 60 * 15
 export class Mix {
   queue: MixSong[] = []
   queuePosition = 0
-  playing = false
+  paused = false
   progressSeconds = 0
 
   isCollectingSongs = false
@@ -35,6 +37,8 @@ export class Mix {
     })
 
     socket.onOpen.listen(this.handleSocketOpen)
+    socket.onPlayerUpdate.listen(this.handlePlayerUpdate)
+    socket.onPlayerEvent.listen(this.handlePlayerEvent)
 
     guild.client.ws.on("VOICE_STATE_UPDATE", this.handleVoiceStateUpdate)
     guild.client.ws.on("VOICE_SERVER_UPDATE", this.handleVoiceServerUpdate)
@@ -43,6 +47,29 @@ export class Mix {
   handleSocketOpen = () => {
     if (this.voiceChannelId) {
       this.joinVoiceChannel(this.voiceChannelId)
+      this.play().catch(console.error)
+    }
+  }
+
+  handlePlayerUpdate = (data: PlayerUpdate) => {
+    if (data.guildId === this.guild.id) {
+      this.progressSeconds = (data.state.position ?? 0) / 1000
+    }
+  }
+
+  handlePlayerEvent = (event: PlayerEvent) => {
+    if (event.type === "TrackEndEvent") {
+      this.playNext().catch(console.error)
+    }
+
+    if (event.type === "TrackExceptionEvent") {
+      console.error("track exception", event.error)
+      this.playNext().catch(console.error)
+    }
+
+    if (event.type === "TrackStuckEvent") {
+      console.error("track stuck", event.track)
+      this.playNext().catch(console.error)
     }
   }
 
@@ -82,6 +109,10 @@ export class Mix {
 
   get isEmpty() {
     return this.queue.length === 0
+  }
+
+  get currentSong() {
+    return this.queue[this.queuePosition]
   }
 
   reset() {
@@ -158,11 +189,34 @@ export class Mix {
     this.guild.shard.send(payload)
   }
 
-  play() {
-    this.playing = true
+  async play(): Promise<void> {
+    const song = this.currentSong
+    if (!song) return
+
+    const track = await loadLavalinkTrack(song.youtubeId)
+    if (!track) {
+      console.error(
+        `Failed to load track for ${song.title} by id ${song.youtubeId}`,
+      )
+      return this.playNext()
+    }
+
+    // song changed since we started loading it
+    if (song !== this.currentSong) return
+
+    this.socket.send({
+      op: "play",
+      guildId: this.guild.id,
+      track,
+    })
   }
 
-  pause() {
-    this.playing = false
+  advance() {
+    this.queuePosition += 1
+  }
+
+  playNext() {
+    this.advance()
+    return this.play()
   }
 }

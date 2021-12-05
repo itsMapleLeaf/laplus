@@ -84,6 +84,7 @@ export function addMixCommands(gatekeeper: Gatekeeper, root: RootStore) {
       unsubscribe()
 
       mix.joinVoiceChannel(voiceChannel.id)
+      await mix.play()
     }),
   })
 }

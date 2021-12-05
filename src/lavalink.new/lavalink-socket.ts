@@ -18,8 +18,9 @@ import { createSocket } from "../socket.js"
 export class LavalinkSocket {
   socket = createSocket()
   connected = false
+
   onOpen = createEmitter()
-  onEvent = createEmitter<PlayerEvent>()
+  onPlayerEvent = createEmitter<PlayerEvent>()
   onPlayerUpdate = createEmitter<PlayerUpdate>()
 
   stats: StatsData = {
@@ -42,7 +43,8 @@ export class LavalinkSocket {
   constructor() {
     makeAutoObservable(this, {
       socket: false,
-      onEvent: false,
+      onOpen: false,
+      onPlayerEvent: false,
       onPlayerUpdate: false,
     })
 
@@ -83,7 +85,7 @@ export class LavalinkSocket {
       this.onPlayerUpdate.emit(message)
     }
     if (message.op === "event") {
-      this.onEvent.emit(message)
+      this.onPlayerEvent.emit(message)
     }
   }
 }
