@@ -5,12 +5,23 @@ import type {
   GatewayVoiceStateUpdateDispatchData,
 } from "discord-api-types"
 import type { Guild } from "discord.js"
-import { makeAutoObservable, runInAction } from "mobx"
+import { autorun, makeAutoObservable, runInAction } from "mobx"
+import { z } from "zod"
 import type { LavalinkSocket } from "../lavalink.new/lavalink-socket.js"
 import { loadLavalinkTrack } from "../lavalink/lavalink-http.js"
 import type { MixSong } from "../mix/mix-song.js"
+import { mixSongSchema } from "../mix/mix-song.js"
 import type { RelatedResult, YoutubeVideo } from "../youtube.js"
 import { findRelated, isLiveVideo, isPlaylist } from "../youtube.js"
+
+type SerializedMix = z.infer<typeof serializedMixSchema>
+export const serializedMixSchema = z.object({
+  queue: z.array(mixSongSchema),
+  queuePosition: z.number(),
+  paused: z.boolean(),
+  progressSeconds: z.number(),
+  voiceChannelId: z.string().optional(),
+})
 
 const maxDurationSeconds = 60 * 15
 
@@ -42,12 +53,16 @@ export class Mix {
 
     guild.client.ws.on("VOICE_STATE_UPDATE", this.handleVoiceStateUpdate)
     guild.client.ws.on("VOICE_SERVER_UPDATE", this.handleVoiceServerUpdate)
+
+    autorun(() => {
+      console.log(this.queuePosition)
+    })
   }
 
   handleSocketOpen = () => {
     if (this.voiceChannelId) {
       this.joinVoiceChannel(this.voiceChannelId)
-      this.play().catch(console.error)
+      this.hydrate(this.serialized).catch(console.error)
     }
   }
 
@@ -58,18 +73,18 @@ export class Mix {
   }
 
   handlePlayerEvent = (event: PlayerEvent) => {
-    if (event.type === "TrackEndEvent") {
-      this.playNext().catch(console.error)
-    }
-
-    if (event.type === "TrackExceptionEvent") {
-      console.error("track exception", event.error)
+    if (event.type === "TrackEndEvent" && event.reason === "FINISHED") {
       this.playNext().catch(console.error)
     }
 
     if (event.type === "TrackStuckEvent") {
       console.error("track stuck", event.track)
-      this.playNext().catch(console.error)
+      this.hydrate(this.serialized).catch(console.error)
+    }
+
+    if (event.type === "TrackExceptionEvent") {
+      console.error("track exception", event.error)
+      this.hydrate(this.serialized).catch(console.error)
     }
   }
 
@@ -113,6 +128,16 @@ export class Mix {
 
   get currentSong() {
     return this.queue[this.queuePosition]
+  }
+
+  get serialized(): SerializedMix {
+    return {
+      queue: this.queue,
+      queuePosition: this.queuePosition,
+      paused: this.paused,
+      progressSeconds: this.progressSeconds,
+      voiceChannelId: this.voiceChannelId,
+    }
   }
 
   reset() {
@@ -218,5 +243,36 @@ export class Mix {
   playNext() {
     this.advance()
     return this.play()
+  }
+
+  async hydrate(data: SerializedMix) {
+    this.queue = data.queue
+    this.queuePosition = data.queuePosition
+    this.paused = data.paused
+    this.progressSeconds = data.progressSeconds
+    this.voiceChannelId = data.voiceChannelId
+
+    if (data.voiceChannelId) {
+      this.joinVoiceChannel(data.voiceChannelId)
+    }
+
+    const song = data.queue[data.queuePosition]
+    if (!song) return
+
+    const track = await loadLavalinkTrack(song.youtubeId)
+    if (!track) {
+      console.error(
+        `Failed to load track for ${song.title} by id ${song.youtubeId}`,
+      )
+      return this.playNext()
+    }
+
+    this.socket.send({
+      op: "play",
+      guildId: this.guild.id,
+      track,
+      startTime: data.progressSeconds * 1000,
+      pause: data.paused,
+    })
   }
 }

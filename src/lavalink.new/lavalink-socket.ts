@@ -61,6 +61,10 @@ export class LavalinkSocket {
         "Client-Name": "La+",
       },
     })
+
+    return new Promise((resolve) => {
+      this.socket.events.once("open", resolve)
+    })
   }
 
   send(message: OutgoingMessage) {

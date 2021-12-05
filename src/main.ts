@@ -30,4 +30,8 @@ const gatekeeper = await Gatekeeper.create({
 addMixCommands(gatekeeper, root)
 
 await client.login(process.env.BOT_TOKEN)
-root.lavalinkSocket.connect(client.user?.id ?? raise("Not logged in"))
+
+await root.lavalinkSocket.connect(client.user?.id ?? raise("Not logged in"))
+
+await root.mixManager.hydrateMixes(client)
+root.mixManager.persistMixes()
