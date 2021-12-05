@@ -12,6 +12,6 @@ processes = []
 allowed_public_ports = []
 auto_rollback = true
 
-[volumes]
+[mounts]
 source = "laplus_data"
 destination = "/data"
