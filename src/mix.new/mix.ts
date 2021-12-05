@@ -5,7 +5,7 @@ import type {
   GatewayVoiceStateUpdateDispatchData,
 } from "discord-api-types"
 import type { Guild } from "discord.js"
-import { autorun, makeAutoObservable, runInAction } from "mobx"
+import { makeAutoObservable, runInAction } from "mobx"
 import { z } from "zod"
 import type { LavalinkSocket } from "../lavalink.new/lavalink-socket.js"
 import { loadLavalinkTrack } from "../lavalink/lavalink-http.js"
@@ -53,10 +53,6 @@ export class Mix {
 
     guild.client.ws.on("VOICE_STATE_UPDATE", this.handleVoiceStateUpdate)
     guild.client.ws.on("VOICE_SERVER_UPDATE", this.handleVoiceServerUpdate)
-
-    autorun(() => {
-      console.log(this.queuePosition)
-    })
   }
 
   handleSocketOpen = () => {
