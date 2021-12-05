@@ -1,16 +1,10 @@
 import { Gatekeeper } from "@itsmapleleaf/gatekeeper"
 import { Client, Intents } from "discord.js"
 import "dotenv/config.js"
-import { configure } from "mobx"
-import { dirname, join } from "node:path"
-import { fileURLToPath } from "node:url"
-import { connectToLavalink } from "./lavalink/lavalink-socket.js"
-import { restoreMixPlayers } from "./mix/mix-player-manager.js"
+import { addMixCommands } from "./commands.new/mix.js"
+import { raise } from "./helpers/errors.js"
+import { RootStore } from "./root-store.js"
 import { textChannelPresence } from "./singletons.js"
-
-configure({
-  enforceActions: "never",
-})
 
 const client = new Client({
   intents: [
@@ -26,14 +20,14 @@ client.on("interactionCreate", (interaction) => {
   }
 })
 
-await Gatekeeper.create({
+const root = new RootStore()
+
+const gatekeeper = await Gatekeeper.create({
   name: "laplus",
   client,
-  commandFolder: join(dirname(fileURLToPath(import.meta.url)), "commands"),
 })
 
+addMixCommands(gatekeeper, root)
+
 await client.login(process.env.BOT_TOKEN)
-
-connectToLavalink(client)
-
-await restoreMixPlayers(client)
+root.lavalinkSocket.connect(client.user?.id ?? raise("Not logged in"))
