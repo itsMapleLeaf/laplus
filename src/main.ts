@@ -4,6 +4,7 @@ import "dotenv/config.js"
 import { addMixCommands } from "./commands.new/mix.js"
 import { addNowPlayingCommand } from "./commands.new/now-playing.js"
 import { addPlayerControlCommands } from "./commands.new/player-control.js"
+import addStatsCommand from "./commands.new/stats.js"
 import { raise } from "./helpers/errors.js"
 import { RootStore } from "./root-store.js"
 import { textChannelPresence } from "./singletons.js"
@@ -32,6 +33,7 @@ const gatekeeper = await Gatekeeper.create({
 addMixCommands(gatekeeper, root)
 addNowPlayingCommand(gatekeeper, root)
 addPlayerControlCommands(gatekeeper, root)
+addStatsCommand(gatekeeper, root)
 
 await client.login(process.env.BOT_TOKEN)
 

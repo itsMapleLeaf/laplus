@@ -30,12 +30,12 @@
 ## features
 
 - [ ] get more related videos when queue ends
-- persist player state via github gist
+- persist player state
   - [x] current playing song
   - [x] queue
   - [x] song position
   - [x] voice channel - re-join the channel on startup
-  - [ ] seek the song when reconnecting to lavalink
+  - [x] seek the song when reconnecting to lavalink
 - [ ] role-based permissions
 - [ ] saved mixes + switching between them
   - remove the mix replace confirmation if adding this
