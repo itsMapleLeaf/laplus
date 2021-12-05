@@ -4,7 +4,8 @@ import "dotenv/config.js"
 import { configure } from "mobx"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
-import { connectToLavalink } from "./lavalink.js"
+import { connectToLavalink } from "./lavalink/lavalink-socket.js"
+import { restoreMixPlayers } from "./mix/mix-player-manager.js"
 import { textChannelPresence } from "./singletons.js"
 
 configure({
@@ -34,3 +35,5 @@ await Gatekeeper.create({
 await client.login(process.env.BOT_TOKEN)
 
 connectToLavalink(client)
+
+await restoreMixPlayers(client)

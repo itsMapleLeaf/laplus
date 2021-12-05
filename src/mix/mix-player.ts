@@ -1,24 +1,25 @@
 import { TrackEndReason } from "@lavaclient/types"
 import chalk from "chalk"
-import type { BaseGuildVoiceChannel } from "discord.js"
+import type { Client } from "discord.js"
 import { Util } from "discord.js"
 import { observable } from "mobx"
 import type { PositiveInteger } from ".././helpers/is-positive-integer.js"
-import { createLavalinkPlayer, loadLavalinkTrack } from "../lavalink.js"
+import { loadLavalinkTrack } from "../lavalink/lavalink-http"
+import { createLavalinkPlayer } from "../lavalink/lavalink-socket.js"
 import { textChannelPresence } from "../singletons.js"
 import type { MixSong } from "./mix.js"
 import { createMix } from "./mix.js"
 
 export type MixPlayer = ReturnType<typeof createMixPlayer>
 
-export function createMixPlayer(guildId: string) {
+export function createMixPlayer(client: Client, guildId: string) {
   const mix = createMix()
 
   const currentSong = observable.box<MixSong | undefined>(undefined, {
     deep: false,
   })
 
-  const player = createLavalinkPlayer(guildId, (event) => {
+  const player = createLavalinkPlayer(client, guildId, (event) => {
     const song = currentSong.get()
 
     if (event.type === "TrackStuckEvent") {
@@ -69,6 +70,10 @@ export function createMixPlayer(guildId: string) {
   }
 
   return {
+    get guildId() {
+      return guildId
+    },
+
     get mix() {
       return mix
     },
@@ -82,13 +87,17 @@ export function createMixPlayer(guildId: string) {
     },
 
     get progressSeconds() {
-      return (player.state.position ?? 0) / 1000
+      return player.progressSeconds
     },
 
     playNext,
 
-    async joinVoiceChannel(channel: BaseGuildVoiceChannel) {
-      await player.connectToVoiceChannel(channel)
+    async joinVoiceChannel(channelId: string) {
+      await player.connectToVoiceChannel(channelId)
+    },
+
+    get voiceChannelId() {
+      return player.voiceChannelId
     },
 
     async skip(count = 1 as PositiveInteger) {

@@ -2,7 +2,7 @@ import type { Gatekeeper, ReplyHandle } from "@itsmapleleaf/gatekeeper"
 import { embedComponent } from "@itsmapleleaf/gatekeeper"
 import prettyMilliseconds from "pretty-ms"
 import { defaultEmbedColor } from "../constants.js"
-import { getLavalinkStats } from "../lavalink.js"
+import { getLavalinkStats } from "../lavalink/lavalink-http"
 import { observerReply } from "../observer-reply.js"
 
 let reply: ReplyHandle | undefined

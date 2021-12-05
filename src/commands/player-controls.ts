@@ -22,7 +22,7 @@ export default function addCommands(gatekeeper: Gatekeeper) {
     run: withGuards(async (context) => {
       const channel = requireVoiceChannel(context)
       const player = requirePlayer(context)
-      await player.joinVoiceChannel(channel)
+      await player.joinVoiceChannel(channel.id)
       player.resume()
       context.reply(() => "Resumed.")
     }),

@@ -29,6 +29,7 @@ specifiers:
   typescript: ^4.5.2
   ws: ^8.3.0
   youtubei: ^0.0.1-rc.27
+  zod: ^3.11.6
 
 dependencies:
   '@discordjs/voice': 0.7.5
@@ -44,6 +45,7 @@ dependencies:
   pretty-ms: 7.0.1
   ws: 8.3.0
   youtubei: 0.0.1-rc.27
+  zod: 3.11.6
 
 devDependencies:
   '@types/node': 16.11.11
@@ -4140,4 +4142,8 @@ packages:
 
   /youtubei/0.0.1-rc.27:
     resolution: {integrity: sha512-4pbKr6F9RpWQ/XLstD9KNTBd5dGkzXNm8sx2ooQFleCka/wknZQhu9HEoGbvJMb4izvfSs2e5TAAK+l6fYwxJQ==}
+    dev: false
+
+  /zod/3.11.6:
+    resolution: {integrity: sha512-daZ80A81I3/9lIydI44motWe6n59kRBfNzTuS2bfzVh1nAXi667TOTWWtatxyG+fwgNUiagSj/CWZwRRbevJIg==}
     dev: false

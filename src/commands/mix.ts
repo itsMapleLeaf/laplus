@@ -28,8 +28,8 @@ export default function addCommands(gatekeeper: Gatekeeper) {
       try {
         const voiceChannel = requireVoiceChannel(context)
 
-        const player = getMixPlayerForGuild(voiceChannel.guildId)
-        await player.joinVoiceChannel(voiceChannel)
+        const player = await getMixPlayerForGuild(voiceChannel.guildId)
+        await player.joinVoiceChannel(voiceChannel.id)
 
         if (player.mix.isCollectingSongs) {
           context.reply(() => "This mix is busy. Try again later.")
