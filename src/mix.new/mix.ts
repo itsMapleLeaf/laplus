@@ -156,6 +156,7 @@ export class Mix {
     }
 
     try {
+      this.reset()
       this.isCollectingSongs = true
       this.addSongsFromYoutubeResults([video, ...video.related])
       for await (const results of findRelated(video)) {
