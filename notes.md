@@ -12,6 +12,8 @@
 - [x] /pause and /resume
 - [x] /seek (seconds)
 - [x] /stats
+- [ ] /join
+- [ ] /leave
 - /remove
   - [ ] show a dropdown menu with all of the songs in the queue
   - [ ] click to uncheck songs, all initially checked

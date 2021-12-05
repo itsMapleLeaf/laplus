@@ -239,8 +239,8 @@ export class Mix {
     })
   }
 
-  playNext() {
-    this.advance()
+  playNext(count = 1) {
+    this.advance(count)
     return this.play()
   }
 
@@ -251,8 +251,8 @@ export class Mix {
     })
   }
 
-  advance() {
-    this.queuePosition += 1
+  advance(count = 1) {
+    this.queuePosition = Math.max(this.queuePosition + count, 0)
   }
 
   hydrate(data: SerializedMix) {
@@ -269,6 +269,24 @@ export class Mix {
     return this.play({
       paused: data.paused,
       startSeconds: data.progressSeconds,
+    })
+  }
+
+  pause() {
+    this.paused = true
+    this.socket.send({ op: "pause", guildId: this.guild.id, pause: true })
+  }
+
+  resume() {
+    this.paused = false
+    this.socket.send({ op: "pause", guildId: this.guild.id, pause: false })
+  }
+
+  seek(seconds: number) {
+    this.socket.send({
+      op: "seek",
+      guildId: this.guild.id,
+      position: seconds * 1000,
     })
   }
 }
