@@ -1,6 +1,10 @@
 import type { Gatekeeper } from "@itsmapleleaf/gatekeeper"
 import { Util } from "discord.js"
-import { requireGuild, withGuards } from "../command-guards.js"
+import {
+  requireGuild,
+  requireVoiceChannel,
+  withGuards,
+} from "../command-guards.js"
 import { joinContentfulStrings } from "../helpers/format.js"
 import type { RootStore } from "../root-store.js"
 
@@ -55,7 +59,10 @@ export function addPlayerControlCommands(
     name: "resume",
     description: "Resume playing.",
     run: withGuards((context) => {
-      root.mixManager.getMix(requireGuild(context)).resume()
+      const voiceChannel = requireVoiceChannel(context)
+      const mix = root.mixManager.getMix(voiceChannel.guild)
+      mix.resume()
+      mix.joinVoiceChannel(voiceChannel.id)
       context.reply(() => `Resumed.`)
     }),
   })
