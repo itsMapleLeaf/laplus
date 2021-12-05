@@ -79,14 +79,23 @@ export function addPlayerControlCommands(
     },
     run: withGuards((context) => {
       const mix = root.mixManager.getMix(requireGuild(context))
+
       const { currentSong } = mix
       if (!currentSong) {
         context.reply(() => `Nothing's playing. Baka.`)
         return
       }
 
-      mix.seek(context.options.time)
-      context.reply(() => `Now playing from ${context.options.time} seconds.`)
+      const { time } = context.options
+      if (time < 0 || time > currentSong.durationSeconds) {
+        context.reply(() => [
+          `Time must be between 0 and ${currentSong.durationSeconds}. Baka.`,
+        ])
+        return
+      }
+
+      mix.seek(time)
+      context.reply(() => `Now playing from ${time} seconds.`)
     }),
   })
 }
