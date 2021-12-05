@@ -1,4 +1,5 @@
-import { LoadTracksResponse, LoadType } from "@lavaclient/types"
+import type { LoadTracksResponse } from "@lavaclient/types"
+import { LoadType } from "@lavaclient/types"
 import fetch from "node-fetch"
 import { lavalinkHttpUrl, lavalinkPassword } from "./lavalink-constants.js"
 
