@@ -5,6 +5,7 @@ import { observable, runInAction } from "mobx"
 import { requireVoiceChannel, withGuards } from "../command-guards.js"
 import { confirm } from "../confirm.js"
 import { defaultEmbedColor } from "../constants.js"
+import { showNowPlaying } from "../now-playing-message.js"
 import { observerReply } from "../observer-reply.js"
 import type { RootStore } from "../root-store.js"
 import { findVideoByUserInput } from "../youtube.js"
@@ -85,6 +86,8 @@ export function addMixCommands(gatekeeper: Gatekeeper, root: RootStore) {
 
       mix.joinVoiceChannel(voiceChannel.id)
       await mix.play()
+
+      showNowPlaying(context, mix)
     }),
   })
 }

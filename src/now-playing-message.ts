@@ -1,12 +1,12 @@
 import type { InteractionContext, ReplyHandle } from "@itsmapleleaf/gatekeeper"
 import { buttonComponent, embedComponent } from "@itsmapleleaf/gatekeeper"
 import type { MessageEmbedOptions } from "discord.js"
-import { observable } from "mobx"
+import { action, observable } from "mobx"
 import prettyMilliseconds from "pretty-ms"
 import { defaultEmbedColor } from "./constants.js"
 import { clamp } from "./helpers/clamp.js"
 import { joinContentfulStrings } from "./helpers/format.js"
-import { getMixPlayerForGuild } from "./mix/mix-player-manager.js"
+import type { Mix } from "./mix.new/mix.js"
 import type { MixSong } from "./mix/mix-song.js"
 import { observerReply } from "./observer-reply.js"
 
@@ -15,7 +15,7 @@ const itemsPerPage = 5
 let currentId: NodeJS.Timer | undefined
 let reply: ReplyHandle | undefined
 
-export function showNowPlaying(context: InteractionContext, guildId: string) {
+export function showNowPlaying(context: InteractionContext, mix: Mix) {
   if (currentId) clearInterval(currentId)
   reply?.delete()
 
@@ -24,20 +24,19 @@ export function showNowPlaying(context: InteractionContext, guildId: string) {
   })
 
   reply = observerReply(context, () => {
-    const { currentSong, progressSeconds, songs } =
-      getMixPlayerForGuild(guildId)
+    const { currentSong, progressSeconds, upcomingSongs: queue } = mix
 
     if (!currentSong) {
       return "Nothing's playing at the moment."
     }
 
-    const totalPages = Math.ceil(songs.length / itemsPerPage)
+    const totalPages = Math.ceil(queue.length / itemsPerPage)
     const pageMax = totalPages * itemsPerPage
 
     const pageStart = (() => {
       if (state.pageCursor == null) return 0
       return clamp(
-        songs.findIndex((song) => song.youtubeId === state.pageCursor),
+        queue.findIndex((song) => song.youtubeId === state.pageCursor),
         0,
         pageMax,
       )
@@ -45,10 +44,10 @@ export function showNowPlaying(context: InteractionContext, guildId: string) {
 
     const pageNumber = Math.floor(pageStart / itemsPerPage) + 1
 
-    const goToPage = (page: number) => {
+    const goToPage = action((page: number) => {
       const actualPage = clamp(Math.floor(page / 5) * 5, 0, pageMax)
-      state.pageCursor = songs[actualPage]?.youtubeId
-    }
+      state.pageCursor = queue[actualPage]?.youtubeId
+    })
 
     const progressNormalized = Math.min(
       progressSeconds / currentSong.durationSeconds,
@@ -59,7 +58,7 @@ export function showNowPlaying(context: InteractionContext, guildId: string) {
       embedComponent(currentSongEmbed(currentSong, progressNormalized)),
       embedComponent(
         queueEmbed(
-          songs,
+          queue,
           currentSong.durationSeconds - progressSeconds,
           pageStart,
           pageNumber,
@@ -79,7 +78,7 @@ export function showNowPlaying(context: InteractionContext, guildId: string) {
         label: "",
         emoji: "➡",
         style: "SECONDARY",
-        disabled: pageStart + itemsPerPage >= songs.length,
+        disabled: pageStart + itemsPerPage >= queue.length,
         onClick: () => {
           goToPage(pageStart + 5)
         },

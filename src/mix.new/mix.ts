@@ -126,6 +126,10 @@ export class Mix {
     return this.queue[this.queuePosition]
   }
 
+  get upcomingSongs() {
+    return this.queue.slice(this.queuePosition + 1)
+  }
+
   get serialized(): SerializedMix {
     return {
       queue: this.queue,
