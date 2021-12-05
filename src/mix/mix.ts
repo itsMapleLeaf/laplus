@@ -1,49 +1,193 @@
-import { action, observable } from "mobx"
-import type { PositiveInteger } from ".././helpers/is-positive-integer.js"
+import type { PlayerEvent, PlayerUpdate } from "@lavaclient/types"
+import type {
+  GatewayVoiceServerUpdateDispatchData,
+  GatewayVoiceStateUpdate,
+  GatewayVoiceStateUpdateDispatchData,
+} from "discord-api-types"
+import type { Guild } from "discord.js"
+import { makeAutoObservable, runInAction } from "mobx"
+import { z } from "zod"
+import { loadLavalinkTrack } from "../lavalink/lavalink-http.js"
+import type { LavalinkSocket } from "../lavalink/lavalink-socket.js"
 import type { RelatedResult, YoutubeVideo } from "../youtube.js"
 import { findRelated, isLiveVideo, isPlaylist } from "../youtube.js"
 import type { MixSong } from "./mix-song.js"
+import { mixSongSchema } from "./mix-song.js"
+
+type SerializedMix = z.infer<typeof serializedMixSchema>
+export const serializedMixSchema = z.object({
+  queue: z.array(mixSongSchema),
+  queuePosition: z.number(),
+  paused: z.boolean(),
+  progressSeconds: z.number(),
+  voiceChannelId: z.string().optional(),
+})
 
 const maxDurationSeconds = 60 * 15
 
-type MixStatus = "idle" | "collectingSongs"
+export class Mix {
+  queue: MixSong[] = []
+  queuePosition = 0
+  paused = false
+  progressSeconds = 0
 
-export function createMix() {
-  const store = observable(
-    {
-      status: "idle" as MixStatus,
-      songs: [] as MixSong[],
-      // TODO: turn this into a single ignoredCounts object
-      ignoredLiveCount: 0,
-      ignoredPlaylistCount: 0,
-      ignoredLengthyCount: 0,
-    },
-    {
-      songs: observable.shallow,
-    },
-  )
+  isCollectingSongs = false
+  ignoredLiveCount = 0
+  ignoredPlaylistCount = 0
+  ignoredLengthyCount = 0
 
-  const addSongs = action(function addSongs(
-    results: Array<YoutubeVideo | RelatedResult>,
-  ) {
+  voiceChannelId?: string
+  voiceSessionId?: string
+  voiceEndpoint?: string
+  voiceToken?: string
+
+  constructor(readonly guild: Guild, readonly socket: LavalinkSocket) {
+    makeAutoObservable(this, {
+      guild: false,
+      socket: false,
+    })
+
+    socket.onOpen.listen(this.handleSocketOpen)
+    socket.onPlayerUpdate.listen(this.handlePlayerUpdate)
+    socket.onPlayerEvent.listen(this.handlePlayerEvent)
+
+    guild.client.ws.on("VOICE_STATE_UPDATE", this.handleVoiceStateUpdate)
+    guild.client.ws.on("VOICE_SERVER_UPDATE", this.handleVoiceServerUpdate)
+  }
+
+  handleSocketOpen = () => {
+    if (this.voiceChannelId) {
+      this.joinVoiceChannel(this.voiceChannelId)
+      this.playWithCurrentState().catch(console.error)
+    }
+  }
+
+  handlePlayerUpdate = (data: PlayerUpdate) => {
+    if (data.guildId === this.guild.id) {
+      this.progressSeconds = (data.state.position ?? 0) / 1000
+    }
+  }
+
+  handlePlayerEvent = (event: PlayerEvent) => {
+    if (event.type === "TrackEndEvent" && event.reason === "FINISHED") {
+      this.playNext().catch(console.error)
+    }
+
+    if (event.type === "TrackStuckEvent") {
+      console.error("track stuck", event.track)
+      this.playWithCurrentState().catch(console.error)
+    }
+
+    if (event.type === "TrackExceptionEvent") {
+      console.error("track exception", event.error)
+      this.playWithCurrentState().catch(console.error)
+    }
+  }
+
+  handleVoiceStateUpdate = (data: GatewayVoiceStateUpdateDispatchData) => {
+    if (data.guild_id === this.guild.id) {
+      this.voiceSessionId = data.session_id
+      this.sendLavalinkVoiceUpdate()
+    }
+  }
+
+  handleVoiceServerUpdate = (data: GatewayVoiceServerUpdateDispatchData) => {
+    if (data.guild_id === this.guild.id) {
+      this.voiceEndpoint = data.endpoint ?? undefined
+      this.voiceToken = data.token
+      this.sendLavalinkVoiceUpdate()
+    }
+  }
+
+  sendLavalinkVoiceUpdate() {
+    if (
+      this.voiceChannelId &&
+      this.voiceSessionId &&
+      this.voiceEndpoint &&
+      this.voiceToken
+    ) {
+      this.socket.send({
+        op: "voiceUpdate",
+        guildId: this.guild.id,
+        sessionId: this.voiceSessionId,
+        event: {
+          endpoint: this.voiceEndpoint,
+          token: this.voiceToken,
+        },
+      })
+    }
+  }
+
+  get isEmpty() {
+    return this.queue.length === 0
+  }
+
+  get currentSong() {
+    return this.queue[this.queuePosition]
+  }
+
+  get upcomingSongs() {
+    return this.queue.slice(this.queuePosition + 1)
+  }
+
+  get serialized(): SerializedMix {
+    return {
+      queue: this.queue,
+      queuePosition: this.queuePosition,
+      paused: this.paused,
+      progressSeconds: this.progressSeconds,
+      voiceChannelId: this.voiceChannelId,
+    }
+  }
+
+  reset() {
+    this.queue = []
+    this.queuePosition = 0
+    this.ignoredLiveCount = 0
+    this.ignoredPlaylistCount = 0
+    this.ignoredLengthyCount = 0
+    this.isCollectingSongs = true
+  }
+
+  async collectSongs(video: YoutubeVideo) {
+    if (this.isCollectingSongs) {
+      console.warn("Already collecting songs")
+      return
+    }
+
+    try {
+      this.reset()
+      this.isCollectingSongs = true
+      this.addSongsFromYoutubeResults([video, ...video.related])
+      for await (const results of findRelated(video)) {
+        this.addSongsFromYoutubeResults(results)
+      }
+    } finally {
+      runInAction(() => {
+        this.isCollectingSongs = false
+      })
+    }
+  }
+
+  addSongsFromYoutubeResults(results: Array<YoutubeVideo | RelatedResult>) {
     for (const result of results) {
       if (isLiveVideo(result)) {
-        store.ignoredLiveCount += 1
+        this.ignoredLiveCount += 1
         continue
       }
 
       if (isPlaylist(result)) {
-        store.ignoredPlaylistCount += 1
+        this.ignoredPlaylistCount += 1
         continue
       }
 
       const durationSeconds = result.duration ?? Infinity
       if (durationSeconds > maxDurationSeconds) {
-        store.ignoredLengthyCount += 1
+        this.ignoredLengthyCount += 1
         continue
       }
 
-      store.songs.push({
+      this.queue.push({
         title: result.title,
         durationSeconds,
         thumbnailUrl: result.thumbnails.min,
@@ -53,57 +197,96 @@ export function createMix() {
         youtubeId: result.id,
       })
     }
-  })
+  }
 
-  return {
-    get store(): Readonly<typeof store> {
-      return store
-    },
+  joinVoiceChannel(channelId: string) {
+    this.voiceChannelId = channelId
 
-    get isEmpty() {
-      return store.songs.length === 0
-    },
+    // https://discord.com/developers/docs/topics/voice-connections#retrieving-voice-server-information-gateway-voice-state-update-example
+    const payload: GatewayVoiceStateUpdate = {
+      op: 4,
+      d: {
+        guild_id: this.guild.id,
+        channel_id: channelId,
+        self_mute: false,
+        self_deaf: true,
+      },
+    }
+    this.guild.shard.send(payload)
+  }
 
-    get isCollectingSongs() {
-      return store.status === "collectingSongs"
-    },
+  async play({ startSeconds = 0, paused = false } = {}): Promise<void> {
+    const song = this.currentSong
+    if (!song) return
 
-    setSongs(songs: MixSong[]) {
-      store.songs = songs
-    },
+    const track = await loadLavalinkTrack(song.youtubeId)
+    if (!track) {
+      console.error(
+        `Failed to load track for ${song.title} by id ${song.youtubeId}`,
+      )
+      return this.playNext()
+    }
 
-    async collectSongs(video: YoutubeVideo) {
-      if (store.status !== "idle") {
-        throw new Error("Must be in idle state.")
-      }
+    // song changed since we started loading it
+    if (song !== this.currentSong) return
 
-      try {
-        store.songs = []
-        store.ignoredLiveCount = 0
-        store.ignoredPlaylistCount = 0
-        store.ignoredLengthyCount = 0
-        store.status = "collectingSongs"
+    this.socket.send({
+      op: "play",
+      guildId: this.guild.id,
+      track,
+      startTime: startSeconds * 1000,
+      pause: paused,
+    })
+  }
 
-        addSongs([video, ...video.related])
-        for await (const videos of findRelated(video)) {
-          addSongs(videos)
-        }
-      } finally {
-        store.status = "idle"
-      }
-    },
+  playNext(count = 1) {
+    this.advance(count)
+    return this.play()
+  }
 
-    next(advanceCount = 1 as PositiveInteger) {
-      store.songs.splice(0, advanceCount - 1)
-      return store.songs.shift()
-    },
+  playWithCurrentState() {
+    return this.play({
+      startSeconds: this.progressSeconds,
+      paused: this.paused,
+    })
+  }
 
-    clear() {
-      store.songs = []
-    },
+  advance(count = 1) {
+    this.queuePosition = Math.max(this.queuePosition + count, 0)
+  }
 
-    remove(songs: MixSong[]) {
-      store.songs = store.songs.filter((song) => !songs.includes(song))
-    },
+  hydrate(data: SerializedMix) {
+    this.queue = data.queue
+    this.queuePosition = data.queuePosition
+    this.paused = data.paused
+    this.progressSeconds = data.progressSeconds
+    this.voiceChannelId = data.voiceChannelId
+
+    if (data.voiceChannelId) {
+      this.joinVoiceChannel(data.voiceChannelId)
+    }
+
+    return this.play({
+      paused: data.paused,
+      startSeconds: data.progressSeconds,
+    })
+  }
+
+  pause() {
+    this.paused = true
+    this.socket.send({ op: "pause", guildId: this.guild.id, pause: true })
+  }
+
+  resume() {
+    this.paused = false
+    this.socket.send({ op: "pause", guildId: this.guild.id, pause: false })
+  }
+
+  seek(seconds: number) {
+    this.socket.send({
+      op: "seek",
+      guildId: this.guild.id,
+      position: seconds * 1000,
+    })
   }
 }

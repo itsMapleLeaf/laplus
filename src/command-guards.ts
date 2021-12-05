@@ -7,7 +7,6 @@ import type {
 import { embedComponent } from "@itsmapleleaf/gatekeeper"
 import { errorEmbedOptions } from "./error-embed.js"
 import { raise } from "./helpers/errors.js"
-import { getMixPlayerForGuild } from "./mix/mix-player-manager.js"
 
 export function requireGuild(context: InteractionContext) {
   return (
@@ -21,11 +20,6 @@ export function requireVoiceChannel(context: InteractionContext) {
     context.member?.voice.channel ??
     raise(new GuardError("You need to be in a voice channel to do that. Baka."))
   )
-}
-
-export function requirePlayer(context: InteractionContext) {
-  const guild = requireGuild(context)
-  return getMixPlayerForGuild(guild.id)
 }
 
 export function withGuards<Options extends SlashCommandOptionConfigMap>(

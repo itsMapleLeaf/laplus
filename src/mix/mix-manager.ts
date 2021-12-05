@@ -4,7 +4,7 @@ import { readFile, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import { z } from "zod"
 import { safeJsonParse } from "../helpers/json.js"
-import type { LavalinkSocket } from "../lavalink.new/lavalink-socket.js"
+import type { LavalinkSocket } from "../lavalink/lavalink-socket.js"
 import { Mix, serializedMixSchema } from "./mix.js"
 
 const serializedMixesSchema = z.record(serializedMixSchema)

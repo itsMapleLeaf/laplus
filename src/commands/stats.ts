@@ -2,12 +2,12 @@ import type { Gatekeeper, ReplyHandle } from "@itsmapleleaf/gatekeeper"
 import { embedComponent } from "@itsmapleleaf/gatekeeper"
 import prettyMilliseconds from "pretty-ms"
 import { defaultEmbedColor } from "../constants.js"
-import { getLavalinkStats } from "../lavalink/lavalink-http"
 import { observerReply } from "../observer-reply.js"
+import type { RootStore } from "../root-store.js"
 
 let reply: ReplyHandle | undefined
 
-export default function addCommands(gatekeeper: Gatekeeper) {
+export function addStatsCommand(gatekeeper: Gatekeeper, root: RootStore) {
   gatekeeper.addSlashCommand({
     name: "stats",
     description: "Slow audio player stats",
@@ -15,7 +15,7 @@ export default function addCommands(gatekeeper: Gatekeeper) {
       reply?.delete()
 
       reply = observerReply(context, () => {
-        const stats = getLavalinkStats()
+        const { stats } = root.lavalinkSocket
         const { sent = 0, nulled = 0, deficit = 0 } = stats.frameStats ?? {}
 
         return embedComponent({

@@ -1,15 +1,15 @@
 import type { Gatekeeper } from "@itsmapleleaf/gatekeeper"
 import { requireGuild, withGuards } from "../command-guards.js"
 import { showNowPlaying } from "../now-playing-message.js"
+import type { RootStore } from "../root-store.js"
 
-export default function addCommands(gatekeeper: Gatekeeper) {
+export function addNowPlayingCommand(gatekeeper: Gatekeeper, root: RootStore) {
   gatekeeper.addSlashCommand({
     name: "now-playing",
     aliases: ["np"],
-    description: "Show the currently playing song and the queue.",
+    description: "Shows the current playing song and queue",
     run: withGuards((context) => {
-      const guild = requireGuild(context)
-      showNowPlaying(context, guild.id)
+      showNowPlaying(context, root.mixManager.getMix(requireGuild(context)))
     }),
   })
 }

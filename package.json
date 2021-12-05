@@ -11,11 +11,10 @@
     "depcheck": "depcheck"
   },
   "dependencies": {
-    "@discordjs/voice": "^0.7.5",
     "@itsmapleleaf/configs": "^1.0.4",
     "@itsmapleleaf/gatekeeper": "^0.9.0",
     "@lavaclient/types": "^2.0.11",
-    "chalk": "^4",
+    "discord-api-types": "^0.25.2",
     "discord.js": "^13.3.1",
     "dotenv": "^10.0.0",
     "esno": "^0.12.1",

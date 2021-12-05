@@ -2,175 +2,91 @@ import type {
   IncomingMessage,
   OutgoingMessage,
   PlayerEvent,
+  PlayerUpdate,
   StatsData,
 } from "@lavaclient/types"
-import type {
-  GatewayVoiceServerUpdateDispatchData,
-  GatewayVoiceStateUpdateDispatchData,
-} from "discord-api-types"
-import type { Client } from "discord.js"
-import { observable } from "mobx"
+import { makeAutoObservable } from "mobx"
+import type { RawData } from "ws"
+import { createEmitter } from "../helpers/emitter.js"
 import { raise } from "../helpers/errors.js"
-import { textChannelPresence } from "../singletons.js"
 import { createSocket } from "../socket.js"
 import { lavalinkPassword, lavalinkSocketUrl } from "./lavalink-constants.js"
 
-export const stats = observable.box<StatsData>({
-  players: 0,
-  playingPlayers: 0,
-  uptime: 0,
-  memory: {
-    allocated: 0,
-    used: 0,
-    free: 0,
-    reservable: 0,
-  },
-  cpu: {
-    systemLoad: 0,
-    cores: 0,
-    lavalinkLoad: 0,
-  },
-})
+export class LavalinkSocket {
+  socket = createSocket()
+  connected = false
 
-const socket = createSocket()
+  onOpen = createEmitter()
+  onPlayerEvent = createEmitter<PlayerEvent>()
+  onPlayerUpdate = createEmitter<PlayerUpdate>()
 
-socket.events.on("message", (data) => {
-  const message: IncomingMessage = JSON.parse(String(data))
-  if (message.op === "stats") {
-    console.info(`Lavalink stats`, message)
-    stats.set(message)
+  stats: StatsData = {
+    players: 0,
+    playingPlayers: 0,
+    uptime: 0,
+    memory: {
+      allocated: 0,
+      used: 0,
+      free: 0,
+      reservable: 0,
+    },
+    cpu: {
+      systemLoad: 0,
+      cores: 0,
+      lavalinkLoad: 0,
+    },
   }
-})
 
-function send(message: OutgoingMessage) {
-  socket?.send(JSON.stringify(message))
-}
+  constructor() {
+    makeAutoObservable(this, {
+      socket: false,
+      onOpen: false,
+      onPlayerEvent: false,
+      onPlayerUpdate: false,
+    })
 
-export function connectToLavalink(client: Client) {
-  socket.connect(lavalinkSocketUrl, {
-    headers: {
-      "Authorization": lavalinkPassword,
-      "User-Id": client.user?.id ?? raise("Bot user not found"),
-      "Client-Name": "La+",
-    },
-  })
-}
+    this.socket.events.on("open", this.handleOpen)
+    this.socket.events.on("close", this.handleClose)
+    this.socket.events.on("message", this.handleMessage)
+  }
 
-export function createLavalinkPlayer(
-  client: Client,
-  guildId: string,
-  onEvent: (event: PlayerEvent) => void,
-) {
-  const state = observable({
-    progressSeconds: 0,
-    voiceChannelId: undefined as string | undefined,
-  })
-
-  let voiceSessionId: string | undefined
-  let voiceToken: string | undefined
-  let voiceEndpoint: string | undefined
-
-  let currentTrack: string | undefined
-
-  client.ws.on(
-    "VOICE_STATE_UPDATE",
-    (data: GatewayVoiceStateUpdateDispatchData) => {
-      voiceSessionId = data.session_id
-      sendVoiceUpdate()
-    },
-  )
-
-  client.ws.on(
-    "VOICE_SERVER_UPDATE",
-    (packet: GatewayVoiceServerUpdateDispatchData) => {
-      voiceEndpoint = packet.endpoint ?? undefined
-      voiceToken = packet.token
-      sendVoiceUpdate()
-    },
-  )
-
-  socket.events.on("open", () => {
-    if (state.voiceChannelId) {
-      connectToVoiceChannel(state.voiceChannelId).catch(
-        textChannelPresence.reportError,
-      )
-    }
-
-    if (currentTrack) {
-      send({ op: "play", guildId, track: currentTrack })
-      send({ op: "seek", guildId, position: state.progressSeconds })
-    }
-  })
-
-  socket.events.on("message", (data) => {
-    const message: IncomingMessage = JSON.parse(String(data))
-    if (message.op === "playerUpdate") {
-      state.progressSeconds = (message.state.position ?? 0) / 1000
-    }
-    if (message.op === "event") {
-      onEvent(message)
-    }
-  })
-
-  async function connectToVoiceChannel(channelId: string): Promise<void> {
-    state.voiceChannelId = channelId
-
-    const guild =
-      (await client.guilds.fetch(guildId)) ?? raise("Guild not found")
-
-    guild.shard.send({
-      op: 4,
-      d: {
-        guild_id: guildId,
-        channel_id: channelId,
-        self_mute: false,
-        self_deaf: true,
+  connect(clientUserId: string) {
+    this.socket.connect(lavalinkSocketUrl, {
+      headers: {
+        "Authorization": lavalinkPassword,
+        "User-Id": clientUserId ?? raise("Bot not logged in"),
+        "Client-Name": "La+",
       },
+    })
+
+    return new Promise((resolve) => {
+      this.socket.events.once("open", resolve)
     })
   }
 
-  function sendVoiceUpdate() {
-    if (voiceSessionId && voiceToken && voiceEndpoint) {
-      send({
-        op: "voiceUpdate",
-        guildId,
-        sessionId: voiceSessionId,
-        event: { token: voiceToken, endpoint: voiceEndpoint },
-      })
-    }
+  send(message: OutgoingMessage) {
+    this.socket.send(JSON.stringify(message))
   }
 
-  return {
-    get progressSeconds(): number {
-      return state.progressSeconds
-    },
+  handleOpen = () => {
+    this.connected = true
+    this.onOpen.emit()
+  }
 
-    get voiceChannelId(): string | undefined {
-      return state.voiceChannelId
-    },
+  handleClose = () => {
+    this.connected = false
+  }
 
-    connectToVoiceChannel,
-
-    play(track: string) {
-      send({ op: "play", guildId, track })
-      currentTrack = track
-    },
-
-    stop() {
-      send({ op: "stop", guildId })
-      currentTrack = undefined
-    },
-
-    pause() {
-      send({ op: "pause", guildId, pause: true })
-    },
-
-    resume() {
-      send({ op: "pause", guildId, pause: false })
-    },
-
-    seek(seconds: number) {
-      send({ op: "seek", guildId, position: seconds * 1000 })
-    },
+  handleMessage = (data: RawData) => {
+    const message: IncomingMessage = JSON.parse(String(data))
+    if (message.op === "stats") {
+      this.stats = message
+    }
+    if (message.op === "playerUpdate") {
+      this.onPlayerUpdate.emit(message)
+    }
+    if (message.op === "event") {
+      this.onPlayerEvent.emit(message)
+    }
   }
 }

@@ -1,7 +1,6 @@
 import { LoadTracksResponse, LoadType } from "@lavaclient/types"
 import fetch from "node-fetch"
 import { lavalinkHttpUrl, lavalinkPassword } from "./lavalink-constants.js"
-import { stats } from "./lavalink-socket"
 
 export async function loadLavalinkTrack(
   identifier: string,
@@ -27,8 +26,4 @@ export async function loadLavalinkTrack(
     case LoadType.LoadFailed:
       throw new Error(result.exception.message)
   }
-}
-
-export function getLavalinkStats() {
-  return stats.get()
 }

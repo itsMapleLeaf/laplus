@@ -6,8 +6,8 @@ import prettyMilliseconds from "pretty-ms"
 import { defaultEmbedColor } from "./constants.js"
 import { clamp } from "./helpers/clamp.js"
 import { joinContentfulStrings } from "./helpers/format.js"
-import type { Mix } from "./mix.new/mix.js"
 import type { MixSong } from "./mix/mix-song.js"
+import type { Mix } from "./mix/mix.js"
 import { observerReply } from "./observer-reply.js"
 
 const itemsPerPage = 5
