@@ -7,6 +7,7 @@ import { WebSocket } from "ws"
 // eslint-disable-next-line @typescript-eslint/consistent-type-definitions
 interface SocketEvents extends EventEmitter {
   on(event: "open", listener: () => void): this
+  on(event: "close", listener: () => void): this
   on(event: "message", listener: (data: RawData) => void): this
 }
 
@@ -37,6 +38,7 @@ export function createSocket() {
     }
 
     socket.onclose = () => {
+      events.emit("close")
       console.warn(
         `Connection to ${url} closed. Reconnecting in ${prettyMilliseconds(
           reconnectPeriodMs,
