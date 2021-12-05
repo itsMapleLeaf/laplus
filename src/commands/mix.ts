@@ -5,10 +5,13 @@ import { observable, runInAction } from "mobx"
 import { requireVoiceChannel, withGuards } from "../command-guards.js"
 import { confirm } from "../confirm.js"
 import { defaultEmbedColor } from "../constants.js"
+import { MixSongCollector } from "../mix/mix-song-collector.js"
 import { showNowPlaying } from "../now-playing-message.js"
 import { observerReply } from "../observer-reply.js"
 import type { RootStore } from "../root-store.js"
 import { findVideoByUserInput } from "../youtube.js"
+
+const songCollectors = new Map<string, MixSongCollector>()
 
 export function addMixCommands(gatekeeper: Gatekeeper, root: RootStore) {
   gatekeeper.addSlashCommand({
@@ -26,7 +29,7 @@ export function addMixCommands(gatekeeper: Gatekeeper, root: RootStore) {
       const voiceChannel = requireVoiceChannel(context)
       const mix = root.mixManager.getMix(voiceChannel.guild)
 
-      if (mix.isCollectingSongs) {
+      if (songCollectors.has(voiceChannel.guildId)) {
         context.reply(() => "This mix is busy. Try again later.")
         return
       }
@@ -59,6 +62,9 @@ export function addMixCommands(gatekeeper: Gatekeeper, root: RootStore) {
         return
       }
 
+      const collector = new MixSongCollector()
+      songCollectors.set(voiceChannel.guildId, collector)
+
       const done = observable.box(false)
 
       const { unsubscribe } = observerReply(context, () => [
@@ -70,9 +76,9 @@ export function addMixCommands(gatekeeper: Gatekeeper, root: RootStore) {
           thumbnail: { url: video.thumbnails.min },
           description: [
             `Found **${mix.queue.length}** song(s)`,
-            `Ignored **${mix.ignoredLiveCount}** stream(s)`,
-            `Ignored **${mix.ignoredPlaylistCount}** playlist(s)`,
-            `Ignored **${mix.ignoredLengthyCount}** long video(s)`,
+            `Ignored **${collector.ignoredLiveCount}** stream(s)`,
+            `Ignored **${collector.ignoredPlaylistCount}** playlist(s)`,
+            `Ignored **${collector.ignoredLengthyCount}** long video(s)`,
           ].join("\n"),
           footer: {
             text: "Tip: In case you aren't finding many songs, individual songs work best to start with.",
@@ -80,8 +86,9 @@ export function addMixCommands(gatekeeper: Gatekeeper, root: RootStore) {
         }),
       ])
 
-      await mix.collectSongs(video)
+      await collector.collectSongs(mix, video)
       runInAction(() => done.set(true))
+      songCollectors.delete(voiceChannel.guildId)
       unsubscribe()
 
       mix.joinVoiceChannel(voiceChannel.id)

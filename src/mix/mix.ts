@@ -5,13 +5,11 @@ import type {
   GatewayVoiceStateUpdateDispatchData,
 } from "discord-api-types"
 import type { Guild } from "discord.js"
-import { makeAutoObservable, runInAction } from "mobx"
+import { makeAutoObservable } from "mobx"
 import { z } from "zod"
 import { loadLavalinkTrack } from "../lavalink/lavalink-http.js"
 import type { LavalinkSocket } from "../lavalink/lavalink-socket.js"
 import type { TextChannelPresence } from "../text-channel-presence.js"
-import type { RelatedResult, YoutubeVideo } from "../youtube.js"
-import { findRelated, isLiveVideo, isPlaylist } from "../youtube.js"
 import type { MixSong } from "./mix-song.js"
 import { mixSongSchema } from "./mix-song.js"
 
@@ -24,18 +22,11 @@ export const serializedMixSchema = z.object({
   voiceChannelId: z.string().optional(),
 })
 
-const maxDurationSeconds = 60 * 15
-
 export class Mix {
   queue: MixSong[] = []
   queuePosition = 0
   paused = false
   progressSeconds = 0
-
-  isCollectingSongs = false
-  ignoredLiveCount = 0
-  ignoredPlaylistCount = 0
-  ignoredLengthyCount = 0
 
   voiceChannelId?: string
   voiceSessionId?: string
@@ -149,60 +140,10 @@ export class Mix {
   reset() {
     this.queue = []
     this.queuePosition = 0
-    this.ignoredLiveCount = 0
-    this.ignoredPlaylistCount = 0
-    this.ignoredLengthyCount = 0
-    this.isCollectingSongs = true
   }
 
-  async collectSongs(video: YoutubeVideo) {
-    if (this.isCollectingSongs) {
-      console.warn("Already collecting songs")
-      return
-    }
-
-    try {
-      this.reset()
-      this.isCollectingSongs = true
-      this.addSongsFromYoutubeResults([video, ...video.related])
-      for await (const results of findRelated(video)) {
-        this.addSongsFromYoutubeResults(results)
-      }
-    } finally {
-      runInAction(() => {
-        this.isCollectingSongs = false
-      })
-    }
-  }
-
-  addSongsFromYoutubeResults(results: Array<YoutubeVideo | RelatedResult>) {
-    for (const result of results) {
-      if (isLiveVideo(result)) {
-        this.ignoredLiveCount += 1
-        continue
-      }
-
-      if (isPlaylist(result)) {
-        this.ignoredPlaylistCount += 1
-        continue
-      }
-
-      const durationSeconds = result.duration ?? Infinity
-      if (durationSeconds > maxDurationSeconds) {
-        this.ignoredLengthyCount += 1
-        continue
-      }
-
-      this.queue.push({
-        title: result.title,
-        durationSeconds,
-        thumbnailUrl: result.thumbnails.min,
-        channelName: result.channel?.name,
-        channelUrl: result.channel?.url,
-        channelAvatarUrl: result.channel?.thumbnails?.min,
-        youtubeId: result.id,
-      })
-    }
+  addSong(song: MixSong) {
+    this.queue.push(song)
   }
 
   joinVoiceChannel(channelId: string) {
