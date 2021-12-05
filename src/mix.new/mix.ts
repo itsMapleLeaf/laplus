@@ -62,7 +62,7 @@ export class Mix {
   handleSocketOpen = () => {
     if (this.voiceChannelId) {
       this.joinVoiceChannel(this.voiceChannelId)
-      this.hydrate(this.serialized).catch(console.error)
+      this.playWithCurrentState().catch(console.error)
     }
   }
 
@@ -79,12 +79,12 @@ export class Mix {
 
     if (event.type === "TrackStuckEvent") {
       console.error("track stuck", event.track)
-      this.hydrate(this.serialized).catch(console.error)
+      this.playWithCurrentState().catch(console.error)
     }
 
     if (event.type === "TrackExceptionEvent") {
       console.error("track exception", event.error)
-      this.hydrate(this.serialized).catch(console.error)
+      this.playWithCurrentState().catch(console.error)
     }
   }
 
@@ -215,7 +215,7 @@ export class Mix {
     this.guild.shard.send(payload)
   }
 
-  async play(): Promise<void> {
+  async play({ startSeconds = 0, paused = false } = {}): Promise<void> {
     const song = this.currentSong
     if (!song) return
 
@@ -234,11 +234,9 @@ export class Mix {
       op: "play",
       guildId: this.guild.id,
       track,
+      startTime: startSeconds * 1000,
+      pause: paused,
     })
-  }
-
-  advance() {
-    this.queuePosition += 1
   }
 
   playNext() {
@@ -246,7 +244,18 @@ export class Mix {
     return this.play()
   }
 
-  async hydrate(data: SerializedMix) {
+  playWithCurrentState() {
+    return this.play({
+      startSeconds: this.progressSeconds,
+      paused: this.paused,
+    })
+  }
+
+  advance() {
+    this.queuePosition += 1
+  }
+
+  hydrate(data: SerializedMix) {
     this.queue = data.queue
     this.queuePosition = data.queuePosition
     this.paused = data.paused
@@ -257,23 +266,9 @@ export class Mix {
       this.joinVoiceChannel(data.voiceChannelId)
     }
 
-    const song = data.queue[data.queuePosition]
-    if (!song) return
-
-    const track = await loadLavalinkTrack(song.youtubeId)
-    if (!track) {
-      console.error(
-        `Failed to load track for ${song.title} by id ${song.youtubeId}`,
-      )
-      return this.playNext()
-    }
-
-    this.socket.send({
-      op: "play",
-      guildId: this.guild.id,
-      track,
-      startTime: data.progressSeconds * 1000,
-      pause: data.paused,
+    return this.play({
+      paused: data.paused,
+      startSeconds: data.progressSeconds,
     })
   }
 }
