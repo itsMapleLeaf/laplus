@@ -18,6 +18,7 @@ import { createSocket } from "../socket.js"
 export class LavalinkSocket {
   socket = createSocket()
   connected = false
+  onOpen = createEmitter()
   onEvent = createEmitter<PlayerEvent>()
   onPlayerUpdate = createEmitter<PlayerUpdate>()
 
@@ -66,6 +67,7 @@ export class LavalinkSocket {
 
   handleOpen = () => {
     this.connected = true
+    this.onOpen.emit()
   }
 
   handleClose = () => {

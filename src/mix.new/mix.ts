@@ -4,7 +4,7 @@ import type {
   GatewayVoiceStateUpdateDispatchData,
 } from "discord-api-types"
 import type { Guild } from "discord.js"
-import { autorun, makeAutoObservable, runInAction } from "mobx"
+import { makeAutoObservable, runInAction } from "mobx"
 import type { LavalinkSocket } from "../lavalink.new/lavalink-socket.js"
 import type { MixSong } from "../mix/mix-song.js"
 import type { RelatedResult, YoutubeVideo } from "../youtube.js"
@@ -15,6 +15,8 @@ const maxDurationSeconds = 60 * 15
 export class Mix {
   queue: MixSong[] = []
   queuePosition = 0
+  playing = false
+  progressSeconds = 0
 
   isCollectingSongs = false
   ignoredLiveCount = 0
@@ -32,33 +34,22 @@ export class Mix {
       socket: false,
     })
 
+    socket.onOpen.listen(this.handleSocketOpen)
+
     guild.client.ws.on("VOICE_STATE_UPDATE", this.handleVoiceStateUpdate)
     guild.client.ws.on("VOICE_SERVER_UPDATE", this.handleVoiceServerUpdate)
+  }
 
-    autorun(() => {
-      if (
-        socket.connected &&
-        this.voiceChannelId &&
-        this.voiceSessionId &&
-        this.voiceEndpoint &&
-        this.voiceToken
-      ) {
-        socket.send({
-          op: "voiceUpdate",
-          guildId: this.guild.id,
-          sessionId: this.voiceSessionId,
-          event: {
-            endpoint: this.voiceEndpoint,
-            token: this.voiceToken,
-          },
-        })
-      }
-    })
+  handleSocketOpen = () => {
+    if (this.voiceChannelId) {
+      this.joinVoiceChannel(this.voiceChannelId)
+    }
   }
 
   handleVoiceStateUpdate = (data: GatewayVoiceStateUpdateDispatchData) => {
     if (data.guild_id === this.guild.id) {
       this.voiceSessionId = data.session_id
+      this.sendLavalinkVoiceUpdate()
     }
   }
 
@@ -66,6 +57,26 @@ export class Mix {
     if (data.guild_id === this.guild.id) {
       this.voiceEndpoint = data.endpoint ?? undefined
       this.voiceToken = data.token
+      this.sendLavalinkVoiceUpdate()
+    }
+  }
+
+  sendLavalinkVoiceUpdate() {
+    if (
+      this.voiceChannelId &&
+      this.voiceSessionId &&
+      this.voiceEndpoint &&
+      this.voiceToken
+    ) {
+      this.socket.send({
+        op: "voiceUpdate",
+        guildId: this.guild.id,
+        sessionId: this.voiceSessionId,
+        event: {
+          endpoint: this.voiceEndpoint,
+          token: this.voiceToken,
+        },
+      })
     }
   }
 
@@ -145,5 +156,13 @@ export class Mix {
       },
     }
     this.guild.shard.send(payload)
+  }
+
+  play() {
+    this.playing = true
+  }
+
+  pause() {
+    this.playing = false
   }
 }
