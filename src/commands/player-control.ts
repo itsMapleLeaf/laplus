@@ -25,7 +25,7 @@ export function addPlayerControlCommands(
     run: withGuards(async (context) => {
       const mix = root.mixManager.getMix(requireGuild(context))
 
-      const { currentSong } = mix
+      const { currentSong } = mix.queue
       if (!currentSong) {
         context.reply(() => `Nothing's playing. Baka.`)
         return
@@ -80,7 +80,7 @@ export function addPlayerControlCommands(
     run: withGuards((context) => {
       const mix = root.mixManager.getMix(requireGuild(context))
 
-      const { currentSong } = mix
+      const { currentSong } = mix.queue
       if (!currentSong) {
         context.reply(() => `Nothing's playing. Baka.`)
         return

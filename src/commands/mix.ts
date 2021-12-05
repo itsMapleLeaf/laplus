@@ -34,7 +34,7 @@ export function addMixCommands(gatekeeper: Gatekeeper, root: RootStore) {
         return
       }
 
-      if (!mix.isEmpty) {
+      if (!mix.queue.isEmpty) {
         const shouldContinue = await confirm({
           context,
           query: [
@@ -75,7 +75,7 @@ export function addMixCommands(gatekeeper: Gatekeeper, root: RootStore) {
           url: `https://www.youtube.com/watch?v=${video.id}`,
           thumbnail: { url: video.thumbnails.min },
           description: [
-            `Found **${mix.queue.length}** song(s)`,
+            `Found **${mix.queue.size}** song(s)`,
             `Ignored **${collector.ignoredLiveCount}** stream(s)`,
             `Ignored **${collector.ignoredPlaylistCount}** playlist(s)`,
             `Ignored **${collector.ignoredLengthyCount}** long video(s)`,

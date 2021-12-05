@@ -24,25 +24,19 @@ export function showNowPlaying(context: InteractionContext, mix: Mix) {
   })
 
   reply = observerReply(context, () => {
-    const {
-      currentSong,
-      progressSeconds,
-      upcomingSongs: queue,
-      queuePosition,
-      paused,
-    } = mix
-
-    if (!currentSong) {
+    if (!mix.queue.currentSong) {
       return "Nothing's playing at the moment."
     }
 
-    const totalPages = Math.ceil(queue.length / itemsPerPage)
+    const totalPages = Math.ceil(mix.queue.size / itemsPerPage)
     const pageMax = totalPages * itemsPerPage
 
     const pageStart = (() => {
       if (state.pageCursor == null) return 0
       return clamp(
-        queue.findIndex((song) => song.youtubeId === state.pageCursor),
+        mix.queue.songs.findIndex(
+          (song) => song.youtubeId === state.pageCursor,
+        ),
         0,
         pageMax,
       )
@@ -52,27 +46,27 @@ export function showNowPlaying(context: InteractionContext, mix: Mix) {
 
     const goToPage = action((page: number) => {
       const actualPage = clamp(Math.floor(page / 5) * 5, 0, pageMax)
-      state.pageCursor = queue[actualPage]?.youtubeId
+      state.pageCursor = mix.queue.songs[actualPage]?.youtubeId
     })
 
     const progressNormalized = Math.min(
-      progressSeconds / currentSong.durationSeconds,
+      mix.progressSeconds / mix.queue.currentSong.durationSeconds,
       1,
     )
 
     return [
       embedComponent(
         currentSongEmbed(
-          currentSong,
+          mix.queue.currentSong,
           progressNormalized,
-          queuePosition,
-          paused,
+          mix.queue.position,
+          mix.paused,
         ),
       ),
       embedComponent(
         queueEmbed(
-          queue,
-          currentSong.durationSeconds - progressSeconds,
+          mix.queue.songs,
+          mix.queue.currentSong.durationSeconds - mix.progressSeconds,
           pageStart,
           pageNumber,
           totalPages,
@@ -91,7 +85,7 @@ export function showNowPlaying(context: InteractionContext, mix: Mix) {
         label: "",
         emoji: "➡",
         style: "SECONDARY",
-        disabled: pageStart + itemsPerPage >= queue.length,
+        disabled: pageStart + itemsPerPage >= mix.queue.size,
         onClick: () => {
           goToPage(pageStart + 5)
         },

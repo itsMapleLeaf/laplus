@@ -10,7 +10,7 @@ import { z } from "zod"
 import { loadLavalinkTrack } from "../lavalink/lavalink-http.js"
 import type { LavalinkSocket } from "../lavalink/lavalink-socket.js"
 import type { TextChannelPresence } from "../text-channel-presence.js"
-import type { MixSong } from "./mix-song.js"
+import { MixQueue } from "./mix-queue.js"
 import { mixSongSchema } from "./mix-song.js"
 
 type SerializedMix = z.infer<typeof serializedMixSchema>
@@ -23,8 +23,7 @@ export const serializedMixSchema = z.object({
 })
 
 export class Mix {
-  queue: MixSong[] = []
-  queuePosition = 0
+  queue = new MixQueue()
   paused = false
   progressSeconds = 0
 
@@ -71,7 +70,7 @@ export class Mix {
     }
 
     if (event.type === "TrackStuckEvent") {
-      console.warn("Track stuck", { event, song: this.currentSong })
+      console.warn("Track stuck", { event, song: this.queue.currentSong })
       this.playWithCurrentState().catch(this.textChannelPresence.reportError)
     }
 
@@ -115,37 +114,6 @@ export class Mix {
     }
   }
 
-  get isEmpty() {
-    return this.queue.length === 0
-  }
-
-  get currentSong() {
-    return this.queue[this.queuePosition]
-  }
-
-  get upcomingSongs() {
-    return this.queue.slice(this.queuePosition + 1)
-  }
-
-  get serialized(): SerializedMix {
-    return {
-      queue: this.queue,
-      queuePosition: this.queuePosition,
-      paused: this.paused,
-      progressSeconds: this.progressSeconds,
-      voiceChannelId: this.voiceChannelId,
-    }
-  }
-
-  reset() {
-    this.queue = []
-    this.queuePosition = 0
-  }
-
-  addSong(song: MixSong) {
-    this.queue.push(song)
-  }
-
   joinVoiceChannel(channelId: string) {
     this.voiceChannelId = channelId
 
@@ -163,7 +131,7 @@ export class Mix {
   }
 
   async play({ startSeconds = 0, paused = false } = {}): Promise<void> {
-    const song = this.currentSong
+    const song = this.queue.currentSong
     if (!song) return
 
     const track = await loadLavalinkTrack(song.youtubeId)
@@ -175,7 +143,7 @@ export class Mix {
     }
 
     // song changed since we started loading it
-    if (song !== this.currentSong) return
+    if (song !== this.queue.currentSong) return
 
     this.socket.send({
       op: "play",
@@ -187,7 +155,7 @@ export class Mix {
   }
 
   playNext(count = 1) {
-    this.advance(count)
+    this.queue.advance(count)
     return this.play()
   }
 
@@ -195,27 +163,6 @@ export class Mix {
     return this.play({
       startSeconds: this.progressSeconds,
       paused: this.paused,
-    })
-  }
-
-  advance(count = 1) {
-    this.queuePosition = Math.max(this.queuePosition + count, 0)
-  }
-
-  hydrate(data: SerializedMix) {
-    this.queue = data.queue
-    this.queuePosition = data.queuePosition
-    this.paused = data.paused
-    this.progressSeconds = data.progressSeconds
-    this.voiceChannelId = data.voiceChannelId
-
-    if (data.voiceChannelId) {
-      this.joinVoiceChannel(data.voiceChannelId)
-    }
-
-    return this.play({
-      paused: data.paused,
-      startSeconds: data.progressSeconds,
     })
   }
 
@@ -235,5 +182,32 @@ export class Mix {
       guildId: this.guild.id,
       position: seconds * 1000,
     })
+  }
+
+  hydrate(data: SerializedMix) {
+    this.queue.setSongs(data.queue)
+    this.queue.setPosition(data.queuePosition)
+    this.paused = data.paused
+    this.progressSeconds = data.progressSeconds
+    this.voiceChannelId = data.voiceChannelId
+
+    if (data.voiceChannelId) {
+      this.joinVoiceChannel(data.voiceChannelId)
+    }
+
+    return this.play({
+      paused: data.paused,
+      startSeconds: data.progressSeconds,
+    })
+  }
+
+  get serialized(): SerializedMix {
+    return {
+      queue: this.queue.songs,
+      queuePosition: this.queue.position,
+      paused: this.paused,
+      progressSeconds: this.progressSeconds,
+      voiceChannelId: this.voiceChannelId,
+    }
   }
 }

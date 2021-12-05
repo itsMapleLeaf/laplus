@@ -15,7 +15,7 @@ export class MixSongCollector {
   }
 
   async collectSongs(mix: Mix, video: YoutubeVideo) {
-    mix.reset()
+    mix.queue.reset()
     this.addSongsFromYoutubeResults(mix, [video, ...video.related])
     for await (const results of findRelated(video)) {
       this.addSongsFromYoutubeResults(mix, results)
@@ -43,7 +43,7 @@ export class MixSongCollector {
         continue
       }
 
-      mix.addSong({
+      mix.queue.addSong({
         title: result.title,
         durationSeconds,
         thumbnailUrl: result.thumbnails.min,
