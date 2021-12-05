@@ -1,23 +1,12 @@
 import { action, observable } from "mobx"
-import { z } from "zod"
 import type { PositiveInteger } from ".././helpers/is-positive-integer.js"
 import type { RelatedResult, YoutubeVideo } from "../youtube.js"
 import { findRelated, isLiveVideo, isPlaylist } from "../youtube.js"
+import type { MixSong } from "./mix-song.js"
 
 const maxDurationSeconds = 60 * 15
 
 type MixStatus = "idle" | "collectingSongs"
-
-export type MixSong = z.infer<typeof mixSongSchema>
-export const mixSongSchema = z.object({
-  title: z.string(),
-  durationSeconds: z.number(),
-  thumbnailUrl: z.string().optional(),
-  channelName: z.string().optional(),
-  channelUrl: z.string().optional(),
-  channelAvatarUrl: z.string().optional(),
-  youtubeId: z.string(),
-})
 
 export function createMix() {
   const store = observable(

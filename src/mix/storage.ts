@@ -3,7 +3,7 @@ import { join } from "node:path"
 import { z } from "zod"
 import { safeJsonParse } from "../helpers/json.js"
 import type { MixPlayer } from "./mix-player.js"
-import { mixSongSchema } from "./mix.js"
+import { mixSongSchema } from "./mix-song.js"
 
 type SavedMixPlayerState = z.infer<typeof savedMixPlayerStateSchema>
 const savedMixPlayerStateSchema = z.object({

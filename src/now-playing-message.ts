@@ -7,7 +7,7 @@ import { defaultEmbedColor } from "./constants.js"
 import { clamp } from "./helpers/clamp.js"
 import { joinContentfulStrings } from "./helpers/format.js"
 import { getMixPlayerForGuild } from "./mix/mix-player-manager.js"
-import type { MixSong } from "./mix/mix.js"
+import type { MixSong } from "./mix/mix-song.js"
 import { observerReply } from "./observer-reply.js"
 
 const itemsPerPage = 5

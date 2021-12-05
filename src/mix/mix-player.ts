@@ -7,7 +7,7 @@ import type { PositiveInteger } from ".././helpers/is-positive-integer.js"
 import { loadLavalinkTrack } from "../lavalink/lavalink-http"
 import { createLavalinkPlayer } from "../lavalink/lavalink-socket.js"
 import { textChannelPresence } from "../singletons.js"
-import type { MixSong } from "./mix.js"
+import type { MixSong } from "./mix-song.js"
 import { createMix } from "./mix.js"
 
 export type MixPlayer = ReturnType<typeof createMixPlayer>
