@@ -65,6 +65,7 @@ export class Mix {
   }
 
   handlePlayerEvent = (event: PlayerEvent) => {
+    if (event.guildId !== this.guild.id) return
     if (event.type === "TrackEndEvent" && event.reason === "FINISHED") {
       this.playNext().catch(this.textChannelPresence.reportError)
     }
