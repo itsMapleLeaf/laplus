@@ -184,6 +184,11 @@ export class Mix {
     })
   }
 
+  reset() {
+    this.queue.reset()
+    this.socket.send({ op: "stop", guildId: this.guild.id })
+  }
+
   hydrate(data: SerializedMix) {
     this.queue.setSongs(data.queue)
     this.queue.setPosition(data.queuePosition)

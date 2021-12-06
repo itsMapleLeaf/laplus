@@ -98,4 +98,16 @@ export function addPlayerControlCommands(
       context.reply(() => `Now playing from ${time} seconds.`)
     }),
   })
+
+  gatekeeper.addSlashCommand({
+    name: "clear",
+    aliases: ["reset"],
+    description: "Clear the queue and stop the current song.",
+    run: withGuards((context) => {
+      const guild = requireGuild(context)
+      const mix = root.mixManager.getMix(guild)
+      mix.reset()
+      context.reply(() => `Cleared.`)
+    }),
+  })
 }
