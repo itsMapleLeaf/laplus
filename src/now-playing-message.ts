@@ -65,7 +65,7 @@ export function showNowPlaying(context: InteractionContext, mix: Mix) {
       ),
       embedComponent(
         queueEmbed(
-          mix.queue.songs,
+          mix.queue.upcomingSongs,
           mix.queue.currentSong.durationSeconds - mix.progressSeconds,
           pageStart,
           pageNumber,
