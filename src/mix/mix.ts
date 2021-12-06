@@ -130,6 +130,23 @@ export class Mix {
     this.guild.shard.send(payload)
   }
 
+  leaveVoiceChannel() {
+    this.voiceChannelId = undefined
+
+    // https://discord.com/developers/docs/topics/voice-connections#retrieving-voice-server-information-gateway-voice-state-update-example
+    const payload: GatewayVoiceStateUpdate = {
+      op: 4,
+      d: {
+        guild_id: this.guild.id,
+        channel_id: null,
+        self_mute: false,
+        self_deaf: true,
+      },
+    }
+    this.guild.shard.send(payload)
+    this.pause()
+  }
+
   async play({ startSeconds = 0, paused = false } = {}): Promise<void> {
     const song = this.queue.currentSong
     if (!song) return

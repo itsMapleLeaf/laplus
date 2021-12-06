@@ -5,6 +5,7 @@ import { addMixCommands } from "./commands/mix.js"
 import { addNowPlayingCommand } from "./commands/now-playing.js"
 import { addPlayerControlCommands } from "./commands/player-control.js"
 import { addStatsCommand } from "./commands/stats.js"
+import { addVoicePresenceCommands } from "./commands/voice-presence.js"
 import { raise } from "./helpers/errors.js"
 import { RootStore } from "./root-store.js"
 
@@ -33,6 +34,7 @@ addMixCommands(gatekeeper, root)
 addNowPlayingCommand(gatekeeper, root)
 addPlayerControlCommands(gatekeeper, root)
 addStatsCommand(gatekeeper, root)
+addVoicePresenceCommands(gatekeeper, root)
 
 await client.login(process.env.BOT_TOKEN)
 
