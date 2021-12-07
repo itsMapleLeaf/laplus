@@ -7,6 +7,7 @@ import type {
 import type { Guild } from "discord.js"
 import { makeAutoObservable } from "mobx"
 import { z } from "zod"
+import { debounce } from "../helpers/async.js"
 import { loadLavalinkTrack } from "../lavalink/lavalink-http.js"
 import type { LavalinkSocket } from "../lavalink/lavalink-socket.js"
 import type { TextChannelPresence } from "../text-channel-presence.js"
@@ -41,6 +42,10 @@ export class Mix {
       guild: false,
       socket: false,
       textChannelPresence: false,
+      voiceSessionId: false,
+      voiceEndpoint: false,
+      voiceToken: false,
+      sendLavalinkVoiceUpdate: false,
     })
 
     socket.onOpen.listen(this.handleSocketOpen)
@@ -82,7 +87,11 @@ export class Mix {
   }
 
   handleVoiceStateUpdate = (data: GatewayVoiceStateUpdateDispatchData) => {
-    if (data.guild_id === this.guild.id) {
+    if (
+      data.guild_id === this.guild.id &&
+      data.user_id === this.guild.client.user?.id // need to check that the update is for the bot
+    ) {
+      this.voiceChannelId = data.channel_id ?? undefined
       this.voiceSessionId = data.session_id
       this.sendLavalinkVoiceUpdate()
     }
@@ -96,7 +105,8 @@ export class Mix {
     }
   }
 
-  sendLavalinkVoiceUpdate() {
+  // sending too many updates confuses Lavalink
+  sendLavalinkVoiceUpdate = debounce(100, () => {
     if (
       this.voiceChannelId &&
       this.voiceSessionId &&
@@ -113,7 +123,7 @@ export class Mix {
         },
       })
     }
-  }
+  })
 
   joinVoiceChannel(channelId: string) {
     this.voiceChannelId = channelId
