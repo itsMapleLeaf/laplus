@@ -133,6 +133,9 @@ export class Mix {
 
   leaveVoiceChannel() {
     this.voiceChannelId = undefined
+    this.voiceEndpoint = undefined
+    this.voiceSessionId = undefined
+    this.voiceToken = undefined
 
     // https://discord.com/developers/docs/topics/voice-connections#retrieving-voice-server-information-gateway-voice-state-update-example
     const payload: GatewayVoiceStateUpdate = {
