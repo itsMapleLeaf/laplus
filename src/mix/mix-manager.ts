@@ -29,12 +29,11 @@ export class MixManager {
   }
 
   getMix(guild: Guild) {
-    return this.mixes.get(guild.id) ?? this.createMix(guild)
-  }
-
-  createMix(guild: Guild) {
-    const mix = new Mix(guild, this.socket, this.textChannelPresence)
-    this.mixes.set(guild.id, mix)
+    let mix = this.mixes.get(guild.id)
+    if (!mix) {
+      mix = new Mix(guild, this.socket, this.textChannelPresence)
+      this.mixes.set(guild.id, mix)
+    }
     return mix
   }
 
@@ -56,7 +55,7 @@ export class MixManager {
         const guild =
           client.guilds.cache.get(guildId) ??
           (await client.guilds.fetch(guildId))
-        await this.createMix(guild).hydrate(data)
+        await this.getMix(guild).hydrate(data)
       } catch (error) {
         console.error(`Failed to hydrate mix for guild ${guildId}`, error)
       }

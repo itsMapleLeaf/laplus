@@ -12,7 +12,7 @@ export function addVoicePresenceCommands(
     description: "Politely ask La+ to join your voice channel.",
     run: withGuards((context) => {
       const channel = requireVoiceChannel(context)
-      const mix = root.mixManager.createMix(channel.guild)
+      const mix = root.mixManager.getMix(channel.guild)
       mix.joinVoiceChannel(channel.id)
       mix.resume()
       context.reply(() => "**I am here.**")
@@ -25,7 +25,7 @@ export function addVoicePresenceCommands(
     description: "Politely ask La+ to leave your voice channel.",
     run: withGuards((context) => {
       const channel = requireVoiceChannel(context)
-      const mix = root.mixManager.createMix(channel.guild)
+      const mix = root.mixManager.getMix(channel.guild)
       mix.leaveVoiceChannel()
       context.reply(() => "Bye for now. **I'll be back.**")
     }),
