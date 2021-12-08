@@ -47,7 +47,9 @@ class NowPlayingReply {
 
       return [
         embedComponent(this.getCurrentSongEmbedOptions(currentSong)),
+
         embedComponent(this.getQueueEmbedOptions(currentSong)),
+
         this.pager.pageCount > 1 &&
           buttonComponent({
             label: "",
@@ -56,6 +58,7 @@ class NowPlayingReply {
             disabled: !this.pager.hasPrevious,
             onClick: () => this.pager.previous(),
           }),
+
         this.pager.pageCount > 1 &&
           buttonComponent({
             label: "",
@@ -128,6 +131,13 @@ class NowPlayingReply {
 
   private getQueueEmbedOptions(song: MixSong): MessageEmbedOptions {
     const songs = this.mix.queue.upcomingSongs
+    if (songs.length === 0) {
+      return {
+        color: defaultEmbedColor,
+        title: "Queue",
+        description: "The queue is empty.",
+      }
+    }
 
     const totalDurationSeconds = songs.reduce(
       (total, song) => total + song.durationSeconds,
