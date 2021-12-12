@@ -1,19 +1,20 @@
 import type { LoadTracksResponse } from "@lavaclient/types"
 import { LoadType } from "@lavaclient/types"
-import fetch from "node-fetch"
+import got from "got"
 import { lavalinkHttpUrl, lavalinkPassword } from "./lavalink-constants.js"
 
 export async function loadLavalinkTrack(
   identifier: string,
 ): Promise<string | undefined> {
-  const response = await fetch(
-    `${lavalinkHttpUrl}/loadtracks?identifier=${identifier}`,
-    {
-      headers: { Authorization: lavalinkPassword },
-    },
-  )
+  const url = new URL(lavalinkHttpUrl)
+  url.pathname = "/loadtracks"
+  url.searchParams.set("identifier", identifier)
 
-  const result = (await response.json()) as LoadTracksResponse
+  const result = await got(url, {
+    headers: {
+      Authorization: lavalinkPassword,
+    },
+  }).json<LoadTracksResponse>()
 
   switch (result.loadType) {
     case LoadType.TrackLoaded:
